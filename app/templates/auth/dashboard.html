@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}My dashboard · CipherTrust{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div class="page-header-copy"><p class="eyebrow">Authenticated workspace</p><h1>My dashboard</h1><p class="lead">Welcome back, {{ current_user.full_name }}. Review your certificate identity and continue a protected document workflow.</p></div>
+  <span class="user-chip"><span class="user-dot"></span>{{ current_user.email }}</span>
+</header>
+
+<div class="dashboard-grid">
+  <section id="certificates" class="panel wide">
+    <div class="panel-header"><div><span class="panel-kicker">Identity credential</span><h2>Signing certificate</h2></div>{% if current_user.certificates %}<span class="badge badge-{{ current_user.certificates[-1].status }}">{{ current_user.certificates[-1].status }}</span>{% else %}<span class="badge badge-warning">Not issued</span>{% endif %}</div>
+    {% if current_user.certificates %}
+      <ul class="data-list">{% for certificate in current_user.certificates %}<li class="data-row"><span><strong>{{ certificate.subject }}</strong><small class="serial">Serial {{ certificate.serial_number }}</small><small>Valid until {{ certificate.valid_until }}</small></span><span class="badge badge-{{ certificate.status }}">{{ certificate.status }}</span></li>{% endfor %}</ul>
+    {% else %}
+      <div class="empty-state"><strong>No signing certificate yet</strong><span>Submit a password-confirmed request for CA administrator review.</span></div>
+      <form class="form-grid" method="post" action="{{ url_for('auth.request_certificate') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field"><label for="certificate-password">Current password</label><input id="certificate-password" type="password" name="password" autocomplete="current-password" required><p class="field-hint">Used once in memory to protect your newly generated signing key.</p></div>
+        <div class="form-actions"><button class="button button-primary" type="submit">Request signing certificate</button></div>
+      </form>
+    {% endif %}
+  </section>
+
+  <aside class="panel narrow">
+    <div class="panel-header"><div><span class="panel-kicker">Quick actions</span><h2>Documents</h2></div></div>
+    <div class="form-grid">
+      <a class="button button-primary" href="{{ url_for('documents.index') }}#sign">Sign a document</a>
+      <a class="button button-secondary" href="{{ url_for('documents.index') }}#verify">Verify a signature</a>
+      <a class="button button-secondary" href="{{ url_for('documents.index') }}#encrypt">Encrypt for a recipient</a>
+    </div>
+  </aside>
+
+  <section class="panel">
+    <div class="panel-header"><div><span class="panel-kicker">Key separation</span><h2>Encryption identity</h2></div><span class="badge badge-active">Active</span></div>
+    <p>Your X25519 recipient key is separate from your RSA signing key and protected by your password.</p>
+    <a class="text-link" href="{{ url_for('documents.index') }}#received">View received documents →</a>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header"><div><span class="panel-kicker">Privacy-conscious log</span><h2>Recent activity</h2></div></div>
+    {% if events %}<ul class="data-list">{% for event in events %}<li class="data-row"><span><strong>{{ event.action|replace('_', ' ')|title }}</strong><small>{{ event.created_at }}</small></span><span class="badge badge-{{ 'success' if event.outcome == 'success' else 'failed' }}">{{ event.outcome }}</span></li>{% endfor %}</ul>{% else %}<div class="empty-state"><strong>No activity recorded</strong><span>Your security lifecycle events will appear here.</span></div>{% endif %}
+  </section>
+</div>
+{% endblock %}

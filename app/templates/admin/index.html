@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}CA administration · CipherTrust{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div class="page-header-copy"><p class="eyebrow">Restricted certificate authority</p><h1>CA administration</h1><p class="lead">Review identity requests and manage the document-signing certificate lifecycle. CA private-key material remains protected and is never displayed.</p></div>
+  <div class="admin-actions"><span class="badge badge-active">Administrator</span><form class="inline" method="post" action="{{ url_for('admin.refresh_crl') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="button button-secondary button-small">Refresh CRL</button></form></div>
+</header>
+
+<p class="muted page-note">The signed certificate revocation list is renewed whenever a certificate is issued or revoked. Use <strong>Refresh CRL</strong> if it reaches its seven-day validity limit.</p>
+
+<section class="panel">
+  <div class="panel-header"><div><span class="panel-kicker">Review queue</span><h2>Certificate requests</h2></div><span class="badge badge-pending">{{ requests|selectattr('status', 'equalto', 'pending')|list|length }} pending</span></div>
+  {% if requests %}<div class="table-wrap"><table><thead><tr><th>Request</th><th>Applicant</th><th>Submitted</th><th>Status</th><th>Decision</th></tr></thead><tbody>
+  {% for item in requests %}<tr><td class="mono">#{{ item.id }}</td><td><strong>{{ item.user.full_name }}</strong><br><small>{{ item.user.email }}</small></td><td>{{ item.submitted_at }}</td><td><span class="badge badge-{{ item.status }}">{{ item.status }}</span></td><td>{% if item.status == 'pending' %}<div class="admin-actions"><form class="inline" method="post" action="{{ url_for('admin.approve', request_id=item.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="button button-primary button-small">Issue certificate</button></form><form class="inline rejection-form" method="post" action="{{ url_for('admin.reject', request_id=item.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label class="sr-only" for="reason-{{ item.id }}">Rejection reason</label><input id="reason-{{ item.id }}" name="reason" required maxlength="500" placeholder="Rejection reason"><button class="button button-secondary button-small">Reject</button></form></div>{% else %}<span class="muted">Decision recorded</span>{% endif %}</td></tr>{% endfor %}
+  </tbody></table></div>{% else %}<div class="empty-state"><strong>No certificate requests</strong><span>New user requests will enter this review queue.</span></div>{% endif %}
+</section>
+
+<section class="panel section-gap">
+  <div class="panel-header"><div><span class="panel-kicker">Issued identity records</span><h2>Certificate registry</h2></div><span class="badge badge-neutral">{{ certificates|length }} total</span></div>
+  {% if certificates %}<div class="table-wrap"><table><thead><tr><th>Certificate holder</th><th>Serial</th><th>Valid until</th><th>Status</th><th>Lifecycle action</th></tr></thead><tbody>
+  {% for certificate in certificates %}<tr><td><strong>{{ certificate.user.full_name }}</strong><br><small>{{ certificate.user.email }}</small></td><td class="serial">{{ certificate.serial_number }}</td><td>{{ certificate.valid_until }}</td><td><span class="badge badge-{{ certificate.status }}">{{ certificate.status }}</span></td><td>{% if certificate.status == 'active' %}<form class="admin-actions" method="post" action="{{ url_for('admin.revoke', certificate_id=certificate.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label class="sr-only" for="reason-certificate-{{ certificate.id }}">Revocation reason</label><select id="reason-certificate-{{ certificate.id }}" name="reason"><option value="key_compromise">Key compromise</option><option value="cessation_of_operation">Cessation of operation</option><option value="unspecified">Unspecified</option></select><button class="button button-danger button-small">Revoke</button></form>{% else %}<span class="muted">No action available</span>{% endif %}</td></tr>{% endfor %}
+  </tbody></table></div>{% else %}<div class="empty-state"><strong>No issued certificates</strong><span>Approved requests will appear in this registry.</span></div>{% endif %}
+</section>
+{% endblock %}

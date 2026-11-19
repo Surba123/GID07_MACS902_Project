@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Verification result · CipherTrust{% endblock %}
+{% block content %}
+<section class="verification-hero">
+  <p class="eyebrow">Independent verification report</p>
+  <div class="verification-summary">
+    <span class="status-orb{% if not result.overall_valid %} failed{% endif %}" aria-hidden="true">{{ "✓" if result.overall_valid else "×" }}</span>
+    <div>
+      <span class="badge badge-{{ 'trusted' if result.overall_valid else 'failed' }}">{{ "Trusted" if result.overall_valid else "Not trusted" }}</span>
+      <h1>{{ "Signature and signer are valid" if result.overall_valid else "Verification requires attention" }}</h1>
+      <p>{% if result.overall_valid %}The document bytes are unchanged and the signer currently meets every certificate trust requirement.{% else %}The checks below separate document integrity from the signer’s current certificate trust status.{% endif %}</p>
+    </div>
+  </div>
+</section>
+
+<div class="workspace-grid section-gap">
+  <section class="panel span-7" aria-labelledby="verification-checks-heading">
+    <div class="panel-header"><div><span class="panel-kicker">Evidence breakdown</span><h2 id="verification-checks-heading">Verification checks</h2></div><span class="badge badge-{{ 'trusted' if result.overall_valid else 'failed' }}">Overall {{ 'valid' if result.overall_valid else 'failed' }}</span></div>
+    <div class="check-grid">
+      <article class="check-item"><span class="check-symbol{% if not result.document_integrity_valid %} failed{% endif %}" aria-hidden="true">{{ "✓" if result.document_integrity_valid else "×" }}</span><div><strong>Document integrity</strong><small>{{ "The uploaded bytes match the stored SHA-256 digest." if result.document_integrity_valid else "The uploaded bytes do not match the signed document." }}</small></div></article>
+      <article class="check-item"><span class="check-symbol{% if not result.signature_valid %} failed{% endif %}" aria-hidden="true">{{ "✓" if result.signature_valid else "×" }}</span><div><strong>Signature mathematics</strong><small>{{ "The RSA-PSS signature is mathematically valid." if result.signature_valid else "The digital signature could not be validated." }}</small></div></article>
+      <article class="check-item"><span class="check-symbol{% if not result.certificate_currently_valid %} failed{% endif %}" aria-hidden="true">{{ "✓" if result.certificate_currently_valid else "×" }}</span><div><strong>Validity period</strong><small>{{ "The certificate is within its valid date range." if result.certificate_currently_valid else "The certificate is expired or not yet valid." }}</small></div></article>
+      <article class="check-item"><span class="check-symbol{% if not result.chain_valid %} failed{% endif %}" aria-hidden="true">{{ "✓" if result.chain_valid else "×" }}</span><div><strong>Chain of trust</strong><small>{{ "The signer chains to the configured trusted Root CA." if result.chain_valid else "The signer does not chain to the trusted Root CA." }}</small></div></article>
+      <article class="check-item"><span class="check-symbol{% if not result.revocation_checked %} failed{% endif %}" aria-hidden="true">{{ "✓" if result.revocation_checked else "×" }}</span><div><strong>Revocation check</strong><small>{{ "Current revocation information was checked." if result.revocation_checked else "Revocation status could not be confirmed." }}</small></div></article>
+      <article class="check-item"><span class="check-symbol{% if result.revoked %} failed{% endif %}" aria-hidden="true">{{ "×" if result.revoked else "✓" }}</span><div><strong>Certificate status</strong><small>{{ "The signer certificate has been revoked." if result.revoked else "The signer certificate is not listed as revoked." }}</small></div></article>
+      <article class="check-item"><span class="check-symbol{% if not result.signing_authorized %} failed{% endif %}" aria-hidden="true">{{ "✓" if result.signing_authorized else "×" }}</span><div><strong>Signing authorisation</strong><small>{{ "Key Usage permits digital document signing." if result.signing_authorized else "The certificate is not authorised for document signing." }}</small></div></article>
+      <article class="check-item"><span class="check-symbol{% if not result.signer_trusted %} failed{% endif %}" aria-hidden="true">{{ "✓" if result.signer_trusted else "×" }}</span><div><strong>Signer trust</strong><small>{{ "The signer is currently trusted." if result.signer_trusted else "The signer is not currently trusted." }}</small></div></article>
+    </div>
+  </section>
+
+  <aside class="panel span-5" aria-labelledby="signer-details-heading">
+    <div class="panel-header"><div><span class="panel-kicker">Certificate identity</span><h2 id="signer-details-heading">Signer details</h2></div></div>
+    {% if result.signer_subject %}
+    <dl class="detail-list">
+      <div><dt>Certificate subject</dt><dd>{{ result.signer_subject }}</dd></div>
+      <div><dt>Serial number</dt><dd class="serial">{{ result.certificate_serial }}</dd></div>
+      <div><dt>Valid from</dt><dd>{{ result.certificate_valid_from }}</dd></div>
+      <div><dt>Valid until</dt><dd>{{ result.certificate_valid_until }}</dd></div>
+    </dl>
+    {% else %}
+    <div class="empty-state"><strong>Signer identity unavailable</strong><span>No valid certificate identity could be read from this verification input.</span></div>
+    {% endif %}
+    <div class="reason-box">
+      <strong>Decision reasons</strong>
+      {% set reason_labels = {
+        'malformed_signature_package': 'The signature package is malformed or unsupported.',
+        'document_digest_mismatch': 'The document bytes differ from the signed document.',
+        'invalid_document_signature': 'The RSA-PSS signature is invalid.',
+        'certificate_manifest_mismatch': 'The signer certificate does not match the signed manifest.',
+        'certificate_revoked': 'The signer certificate has been revoked.',
+        'crl_missing': 'No certificate revocation list is available.',
+        'crl_not_current': 'The certificate revocation list is not current.',
+        'invalid_crl': 'The certificate revocation list is invalid.',
+        'untrusted_root': 'The chain does not end at this system’s trusted Root CA.',
+        'end_entity_expired': 'The signer certificate has expired.',
+        'end_entity_not_yet_valid': 'The signer certificate is not yet valid.',
+        'end_entity_key_usage_invalid': 'The certificate is not authorised for document signing.',
+        'end_entity_extended_key_usage_invalid': 'The certificate purpose does not permit document signing.'
+      } %}
+      {% if result.reasons %}<ul>{% for reason in result.reasons %}<li>{{ reason_labels.get(reason, reason|replace('_', ' ')|capitalize) }}</li>{% endfor %}</ul>{% else %}<p>No exceptions were reported.</p>{% endif %}
+    </div>
+  </aside>
+</div>
+
+<aside class="scope-note section-gap">
+  <span class="badge badge-warning">Important distinction</span>
+  <p>A mathematically valid signature proves that the signed bytes match the signature. It does not automatically make the signer trusted: an expired, revoked, malformed, unauthorised, or untrusted certificate fails the trust decision.</p>
+</aside>
+
+<div class="form-actions section-gap"><a class="button button-secondary" href="{{ url_for('documents.index') }}">Verify another document</a></div>
+{% endblock %}

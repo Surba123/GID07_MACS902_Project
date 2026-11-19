@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Document workspace · CipherTrust{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div class="page-header-copy"><p class="eyebrow">Document security workspace</p><h1>Sign, verify, and share with confidence.</h1><p class="lead">Work with exact PDF or plain-text bytes. Files are limited to 16 MiB and stored outside the public application directory under opaque identifiers.</p></div>
+  {% if current_user.is_authenticated %}<span class="badge badge-active">Authenticated session</span>{% else %}<span class="badge badge-warning">Public verification</span>{% endif %}
+</header>
+
+<section id="verify" class="panel">
+  <div class="panel-header"><div><span class="panel-kicker">Public workspace</span><h2>Verify a detached signature</h2><p>Provide the original document and either one of your stored signatures or a portable JSON signature package.</p></div><span class="badge badge-neutral">No document retained</span></div>
+  <form method="post" action="{{ url_for('documents.verify') }}" enctype="multipart/form-data" class="workspace-grid">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field span-7"><label class="field-label" for="verify-document">1. Original document</label><div class="upload-zone"><input id="verify-document" required type="file" name="document" accept=".pdf,.txt"><p class="field-hint">The exact bytes are hashed with SHA-256. Any change produces an integrity failure.</p></div></div>
+    <div class="field span-5"><label class="field-label" for="verify-package">2. Signature evidence</label>{% if current_user.is_authenticated %}<select id="verify-signature" name="signature_id"><option value="">Choose one of my stored signatures</option>{% for signature in signatures %}<option value="{{ signature.id }}">{{ signature.document.original_filename }} · {{ signature.public_id }}</option>{% endfor %}</select><p class="field-hint">Or upload a portable package below.</p>{% endif %}<div class="upload-zone"><input id="verify-package" type="file" name="package" accept="application/json,.json"></div></div>
+    <div class="form-actions span-12"><button class="button button-primary" type="submit">Run full verification</button><span class="muted">Checks signature mathematics, chain, validity, usage, and revocation separately.</span></div>
+  </form>
+  <div class="check-grid" aria-label="Verification result explanation">
+    <div class="check-item"><span class="check-symbol">1</span><span><strong>Integrity</strong><small>Do the submitted bytes match the signed SHA-256 digest?</small></span></div>
+    <div class="check-item"><span class="check-symbol">2</span><span><strong>Current trust</strong><small>Is the signer certificate valid, authorised, chained, and not revoked now?</small></span></div>
+  </div>
+</section>
+
+{% if current_user.is_authenticated %}
+<div class="workspace-grid section-gap">
+  <section id="sign" class="panel span-5">
+    <div class="panel-header"><div><span class="panel-kicker">Origin and integrity</span><h2>Sign my document</h2></div>{% if certificates %}<span class="badge badge-active">Ready</span>{% else %}<span class="badge badge-warning">Certificate needed</span>{% endif %}</div>
+    {% if certificates %}
+    <form method="post" action="{{ url_for('documents.sign') }}" enctype="multipart/form-data" class="form-grid">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field"><label for="sign-document">Document</label><div class="upload-zone"><input id="sign-document" required type="file" name="document" accept=".pdf,.txt"></div></div>
+      <div class="field"><label for="sign-password">Current password</label><input id="sign-password" required type="password" name="password" autocomplete="current-password"><p class="field-hint">Unlocks your signing key in memory for this operation only.</p></div>
+      <button class="button button-primary" type="submit">Sign as {{ current_user.full_name }}</button>
+    </form>
+    {% else %}<div class="empty-state"><strong>No active signing certificate</strong><span>Request one from your dashboard, then wait for administrator approval.</span><div class="form-actions center-actions"><a class="button button-secondary" href="{{ url_for('auth.dashboard') }}#certificates">Open certificate status</a></div></div>{% endif %}
+  </section>
+
+  <section id="encrypt" class="panel span-7">
+    <div class="panel-header"><div><span class="panel-kicker">Recipient confidentiality</span><h2>Encrypt for one recipient</h2><p>A fresh ephemeral X25519 key and AES-GCM nonce are generated for every document.</p></div></div>
+    {% if recipients %}
+    <form method="post" action="{{ url_for('documents.encrypt') }}" enctype="multipart/form-data" class="form-grid">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field"><label for="encrypt-document">Document</label><div class="upload-zone"><input id="encrypt-document" required type="file" name="document" accept=".pdf,.txt"></div></div>
+      <div class="field"><label for="recipient">Intended recipient</label><select id="recipient" required name="recipient_id">{% for recipient in recipients %}<option value="{{ recipient.id }}">{{ recipient.full_name }} · {{ recipient.email }}</option>{% endfor %}</select><p class="field-hint">Only this authenticated account can access the decryption route.</p></div>
+      <button class="button button-primary" type="submit">Encrypt for recipient</button>
+    </form>
+    {% else %}<div class="empty-state"><strong>No eligible recipient yet</strong><span>Another active user with an X25519 key must register first.</span></div>{% endif %}
+  </section>
+
+  <section id="received" class="panel span-7">
+    <div class="panel-header"><div><span class="panel-kicker">Recipient inbox</span><h2>Encrypted documents received</h2></div><span class="badge badge-neutral">{{ encrypted_received|length }} items</span></div>
+    {% if encrypted_received %}<div class="data-list">{% for item in encrypted_received %}<form class="data-row" method="post" action="{{ url_for('documents.decrypt', public_id=item.public_id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><span><strong>{{ item.original_filename }}</strong><small>From {{ item.sender.full_name }} · {{ item.byte_length }} bytes</small></span><span class="form-actions"><label class="field"><span class="field-label">Current password</span><input required type="password" name="password" autocomplete="current-password"></label><button class="button button-primary button-small" type="submit">Decrypt &amp; download</button></span></form>{% endfor %}</div>{% else %}<div class="empty-state"><strong>No encrypted documents received</strong><span>Files securely addressed to your account will appear here.</span></div>{% endif %}
+  </section>
+
+  <section class="panel span-5">
+    <div class="panel-header"><div><span class="panel-kicker">Portable evidence</span><h2>My signatures</h2></div></div>
+    {% if signatures %}<ul class="data-list">{% for signature in signatures %}<li class="data-row"><span><strong>{{ signature.document.original_filename }}</strong><small>{{ signature.signing_time }}</small></span><a class="button button-secondary button-small" href="{{ url_for('documents.download_signature_package', public_id=signature.public_id) }}">Download JSON</a></li>{% endfor %}</ul>{% else %}<div class="empty-state"><strong>No signed documents</strong><span>Your detached signature packages will appear here.</span></div>{% endif %}
+  </section>
+
+  <section class="panel span-12">
+    <div class="panel-header"><div><span class="panel-kicker">Outbound confidentiality</span><h2>Encrypted documents sent</h2></div></div>
+    {% if encrypted_sent %}<div class="table-wrap"><table><thead><tr><th>Document</th><th>Recipient</th><th>Algorithm</th><th>Status</th></tr></thead><tbody>{% for item in encrypted_sent %}<tr><td><strong>{{ item.original_filename }}</strong></td><td>{{ item.recipient.full_name }}</td><td class="mono">X25519 · AES-256-GCM</td><td><span class="badge badge-active">Protected</span></td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="empty-state"><strong>No encrypted documents sent</strong><span>Use the encryption form above to create a recipient-only package.</span></div>{% endif %}
+  </section>
+</div>
+{% else %}
+<aside class="scope-note section-gap"><span class="badge badge-warning">Sign-in required</span><p>Public verification reveals only certificate and trust metadata. <a href="{{ url_for('auth.login') }}">Log in</a> to sign, encrypt, decrypt, or access stored records.</p></aside>
+{% endif %}
+{% endblock %}

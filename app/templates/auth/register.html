@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Register · CipherTrust{% endblock %}
+{% block content %}
+<section class="auth-layout">
+  <aside class="auth-aside">
+    <p class="eyebrow">Local identity enrollment</p>
+    <h1>Create your protected workspace.</h1>
+    <p>Registration creates an authenticated account and a separate X25519 key for receiving encrypted documents.</p>
+    <div class="auth-points">
+      <div class="auth-point"><span>01</span> Private keys are never downloadable</div>
+      <div class="auth-point"><span>02</span> Password-derived AES-GCM protection</div>
+      <div class="auth-point"><span>03</span> Administrator-reviewed signing identity</div>
+    </div>
+  </aside>
+  <div class="auth-form">
+    <p class="eyebrow">New demo account</p>
+    <h2>Register</h2>
+    <p>Your password protects your account and encrypted private keys. This prototype has no password or key recovery.</p>
+    <form method="post" class="form-grid">{{ form.hidden_tag() }}
+      <div class="field">{{ form.full_name.label }}{{ form.full_name(autocomplete="name", placeholder="Your full name") }}{% for error in form.full_name.errors %}<p class="field-error"><span>!</span>{{ error }}</p>{% endfor %}</div>
+      <div class="field">{{ form.email.label }}{{ form.email(autocomplete="email", placeholder="name@example.com") }}{% for error in form.email.errors %}<p class="field-error"><span>!</span>{{ error }}</p>{% endfor %}</div>
+      <div class="field">{{ form.password.label }}{{ form.password(autocomplete="new-password", placeholder="At least 12 characters") }}<p class="field-hint">Use a unique passphrase of 12–128 characters. Losing it makes protected keys unrecoverable.</p>{% for error in form.password.errors %}<p class="field-error"><span>!</span>{{ error }}</p>{% endfor %}</div>
+      <div class="field">{{ form.confirm_password.label }}{{ form.confirm_password(autocomplete="new-password", placeholder="Repeat your password") }}{% for error in form.confirm_password.errors %}<p class="field-error"><span>!</span>{{ error }}</p>{% endfor %}</div>
+      <div class="form-actions">{{ form.submit(class_="button button-primary") }}<span class="muted">Already registered? <a href="{{ url_for('auth.login') }}">Log in</a></span></div>
+    </form>
+  </div>
+</section>
+{% endblock %}

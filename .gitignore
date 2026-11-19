@@ -1,0 +1,41 @@
+# Local Python environment and tooling
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+
+# Local settings and generated databases
+.env
+.env.*
+!.env.example
+instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# Private runtime data, regardless of where storage is configured
+storage/*
+!storage/.gitkeep
+uploads/
+uploaded_documents/
+encrypted_documents/
+decrypted_tmp/
+decrypted_files/
+ca_private_keys/
+user_private_keys/
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Editor and OS files
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

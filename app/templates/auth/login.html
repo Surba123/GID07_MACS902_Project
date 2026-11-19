@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Log in · CipherTrust{% endblock %}
+{% block content %}
+<section class="auth-layout">
+  <aside class="auth-aside">
+    <p class="eyebrow">Protected workspace</p>
+    <h1>Return to your secure document flow.</h1>
+    <p>Authentication protects certificate requests, private signing operations, and recipient-only encrypted documents.</p>
+    <div class="auth-points">
+      <div class="auth-point"><span>01</span> Argon2id password verification</div>
+      <div class="auth-point"><span>02</span> CSRF-protected session actions</div>
+      <div class="auth-point"><span>03</span> Owner-scoped document access</div>
+    </div>
+  </aside>
+  <div class="auth-form">
+    <p class="eyebrow">Account access</p>
+    <h2>Log in</h2>
+    <p>Use the credentials for your local demonstration account.</p>
+    <form method="post" class="form-grid">{{ form.hidden_tag() }}
+      <div class="field">{{ form.email.label }}{{ form.email(autocomplete="email", placeholder="name@example.com") }}{% for error in form.email.errors %}<p class="field-error"><span>!</span>{{ error }}</p>{% endfor %}</div>
+      <div class="field">{{ form.password.label }}{{ form.password(autocomplete="current-password", placeholder="Enter your password") }}{% for error in form.password.errors %}<p class="field-error"><span>!</span>{{ error }}</p>{% endfor %}</div>
+      <div class="form-actions">{{ form.submit(class_="button button-primary") }}<span class="muted">No account? <a href="{{ url_for('auth.register') }}">Register locally</a></span></div>
+    </form>
+  </div>
+</section>
+{% endblock %}
